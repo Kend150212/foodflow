@@ -124,7 +124,8 @@ $taxRate = getSetting('tax_rate', 8.25);
                             <?php endif; ?>
                             <?php if (empty($item['is_available_now']) && !empty($item['schedule_info'])): ?>
                                 <span
-                                    class="absolute top-1 right-1 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded font-medium">
+                                    class="absolute top-1 right-1 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded font-medium"
+                                    title="<?= $item['schedule_info']['days'] ?? 'Every day' ?>">
                                     ⏰ <?= $item['schedule_info']['time'] ?? '' ?>
                                 </span>
                             <?php endif; ?>
@@ -384,21 +385,24 @@ $taxRate = getSetting('tax_rate', 8.25);
 
         // Order type
         ['DineIn', 'Takeout', 'Delivery'].forEach(type => {
-            document.getElementById('btn' + type).addEventListener('click', function () {
-                document.querySelectorAll('#btnDineIn, #btnTakeout, #btnDelivery').forEach(b => b.classList.remove('bg-red-600'));
-                this.classList.add('bg-red-600');
-                orderType = type.toLowerCase();
+            const btn = document.getElementById('btn' + type);
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('#btnDineIn, #btnTakeout, #btnDelivery').forEach(b => b && b.classList.remove('bg-red-600'));
+                    this.classList.add('bg-red-600');
+                    orderType = type.toLowerCase();
 
-                const customerInfo = document.getElementById('customerInfo');
-                const addressField = document.getElementById('customerAddress');
+                    const customerInfo = document.getElementById('customerInfo');
+                    const addressField = document.getElementById('customerAddress');
 
-                if (type === 'DineIn') {
-                    customerInfo.classList.add('hidden');
-                } else {
-                    customerInfo.classList.remove('hidden');
-                    addressField.classList.toggle('hidden', type !== 'Delivery');
-                }
-            });
+                    if (type === 'DineIn') {
+                        customerInfo && customerInfo.classList.add('hidden');
+                    } else {
+                        customerInfo && customerInfo.classList.remove('hidden');
+                        addressField && addressField.classList.toggle('hidden', type !== 'Delivery');
+                    }
+                });
+            }
         });
 
         // Clear cart

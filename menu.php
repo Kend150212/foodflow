@@ -211,7 +211,12 @@ if (!$selectedCategory) {
                                                         <span class="badge badge-vegetarian">🌱</span>
                                                     <?php endif; ?>
                                                     <?php if (!$item['is_available_now'] && $item['schedule_info']): ?>
-                                                        <span class="badge" style="background: rgba(234, 179, 8, 0.9); color: #000;">⏰ <?= $item['schedule_info']['time'] ?></span>
+                                                        <span class="badge" style="background: rgba(234, 179, 8, 0.9); color: #000;" title="<?= $item['schedule_info']['days'] ?? 'Every day' ?>">
+                                                            ⏰ <?= $item['schedule_info']['time'] ?>
+                                                            <?php if (!empty($item['schedule_info']['days']) && $item['schedule_info']['days'] !== 'Every day'): ?>
+                                                                <br><small><?= $item['schedule_info']['days'] ?></small>
+                                                            <?php endif; ?>
+                                                        </span>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
