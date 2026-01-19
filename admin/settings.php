@@ -358,7 +358,7 @@ $tabs = [
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">AI Provider</label>
-                        <select name="ai_provider" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                        <select name="ai_provider" id="aiProvider" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
                             <option value="gemini" <?= getSetting('ai_provider') === 'gemini' ? 'selected' : '' ?>>Google Gemini (Recommended)</option>
                             <option value="openai" <?= getSetting('ai_provider') === 'openai' ? 'selected' : '' ?>>OpenAI GPT-4</option>
                         </select>
@@ -369,10 +369,15 @@ $tabs = [
                             Google Gemini API Key
                             <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-600 text-xs ml-2">Get API Key →</a>
                         </label>
-                        <input type="password" name="gemini_api_key" 
-                               placeholder="AIza..." 
-                               value="<?= getSetting('gemini_api_key') ? '••••••••••••••••' : '' ?>"
-                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                        <div class="flex gap-2">
+                            <input type="text" name="gemini_api_key" id="geminiKey"
+                                   placeholder="AIza..." 
+                                   value="<?= htmlspecialchars(getSetting('gemini_api_key', '')) ?>"
+                                   class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                            <button type="button" onclick="testApiKey('gemini')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                                Test
+                            </button>
+                        </div>
                         <p class="text-xs text-gray-500 mt-1">Free tier: 60 requests/minute</p>
                     </div>
                     
@@ -381,16 +386,23 @@ $tabs = [
                             OpenAI API Key
                             <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-600 text-xs ml-2">Get API Key →</a>
                         </label>
-                        <input type="password" name="openai_api_key" 
-                               placeholder="sk-..." 
-                               value="<?= getSetting('openai_api_key') ? '••••••••••••••••' : '' ?>"
-                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                        <div class="flex gap-2">
+                            <input type="text" name="openai_api_key" id="openaiKey"
+                                   placeholder="sk-..." 
+                                   value="<?= htmlspecialchars(getSetting('openai_api_key', '')) ?>"
+                                   class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                            <button type="button" onclick="testApiKey('openai')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                                Test
+                            </button>
+                        </div>
                     </div>
+                    
+                    <div id="testResult" class="hidden rounded-lg p-4 mt-4"></div>
                     
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                         <h4 class="font-medium text-blue-800 mb-2">💡 How it works</h4>
                         <ol class="text-sm text-blue-700 space-y-1">
-                            <li>1. Add your API key above</li>
+                            <li>1. Add your API key above and click "Test" to verify</li>
                             <li>2. Go to <strong>Landing Page</strong> section</li>
                             <li>3. Describe your restaurant/store</li>
                             <li>4. Click <strong>"Generate with AI"</strong></li>
@@ -451,5 +463,48 @@ $tabs = [
             </div>
         </div>
     </main>
+    
+    <script>
+        async function testApiKey(provider) {
+            const keyInput = provider === 'gemini' ? document.getElementById('geminiKey') : document.getElementById('openaiKey');
+            const apiKey = keyInput.value.trim();
+            
+            if (!apiKey) {
+                showTestResult(false, 'Please enter an API key first');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.classList.remove('hidden', 'bg-green-50', 'bg-red-50', 'border-green-200', 'border-red-200');
+            resultDiv.innerHTML = '<span class="text-gray-600">Testing...</span>';
+            resultDiv.classList.add('bg-gray-50', 'border', 'border-gray-200');
+            
+            try {
+                const response = await fetch('../api/test-key.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider, api_key: apiKey })
+                });
+                
+                const data = await response.json();
+                showTestResult(data.success, data.message || data.error);
+            } catch (err) {
+                showTestResult(false, 'Connection error: ' + err.message);
+            }
+        }
+        
+        function showTestResult(success, message) {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.classList.remove('hidden', 'bg-gray-50', 'border-gray-200');
+            
+            if (success) {
+                resultDiv.className = 'rounded-lg p-4 mt-4 bg-green-50 border border-green-200 text-green-700';
+                resultDiv.innerHTML = '✅ ' + message;
+            } else {
+                resultDiv.className = 'rounded-lg p-4 mt-4 bg-red-50 border border-red-200 text-red-700';
+                resultDiv.innerHTML = '❌ ' + message;
+            }
+        }
+    </script>
 </body>
 </html>

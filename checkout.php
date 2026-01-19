@@ -679,7 +679,7 @@ $isOpen = isStoreOpen();
             });
 
             // Form submission
-            document.getElementById('checkoutForm').addEventListener('submit', function (e) {
+            document.getElementById('checkoutForm').addEventListener('submit', async function (e) {
                 e.preventDefault();
 
                 if (Cart.items.length === 0) {
@@ -695,15 +695,48 @@ $isOpen = isStoreOpen();
                 btn.disabled = true;
                 btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;"></span> Processing...';
 
-                // Submit form (in production, this would be handled by payment gateway)
-                showToast('Order placed successfully! Redirecting...', 'success');
+                // Submit via API
+                const formData = new FormData(this);
+                const data = {
+                    customer_name: formData.get('customer_name'),
+                    customer_email: formData.get('customer_email'),
+                    customer_phone: formData.get('customer_phone'),
+                    order_type: isDelivery ? 'delivery' : 'pickup',
+                    delivery_address: formData.get('delivery_address') || '',
+                    delivery_city: formData.get('delivery_city') || '',
+                    delivery_zip: formData.get('delivery_zip') || '',
+                    delivery_instructions: formData.get('delivery_instructions') || '',
+                    payment_method: formData.get('payment_method') || 'card',
+                    tip_percentage: tipPercentage,
+                    custom_tip: customTip,
+                    special_instructions: formData.get('special_instructions') || '',
+                    cart_data: document.getElementById('cartData').value,
+                    csrf_token: formData.get('csrf_token')
+                };
 
-                setTimeout(() => {
-                    // In production: this.submit();
-                    // For demo:
-                    Cart.clear();
-                    window.location.href = 'order-confirmation.php?demo=1';
-                }, 2000);
+                try {
+                    const response = await fetch('api/order.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showToast('Order placed successfully!', 'success');
+                        Cart.clear();
+                        window.location.href = 'order-confirmation.php?order=' + result.order_number;
+                    } else {
+                        showToast('Error: ' + result.error, 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = 'Place Order';
+                    }
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Place Order';
+                }
             });
         });
 
