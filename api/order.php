@@ -182,8 +182,14 @@ try {
                 ]);
             }
 
-            // Send notification
-            sendOrderNotification($orderId);
+            // Send notification (silently - don't let errors affect response)
+            try {
+                ob_start();
+                sendOrderNotification($orderId);
+                ob_end_clean();
+            } catch (Exception $e) {
+                // Log but don't fail the order
+            }
 
             jsonResponse([
                 'success' => true,
