@@ -1,0 +1,37 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Configuration (contains sensitive data)
+includes/config.php
+
+# Uploaded files
+assets/uploads/*
+!assets/uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+error_log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Cache
+*.cache
+/cache/
+
+# Compiled
+*.min.js
+*.min.css
+
+# OS files
+Thumbs.db
