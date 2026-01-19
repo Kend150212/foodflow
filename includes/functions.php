@@ -349,3 +349,53 @@ function sendOrderNotification($orderId)
 
     return mail($storeEmail, $subject, $message, $headers);
 }
+
+/**
+ * Get add-ons for a menu item
+ */
+function getMenuItemAddons($menuItemId)
+{
+    return db()->fetchAll(
+        "SELECT a.*, ac.name as category_name, ac.icon as category_icon, mia.max_quantity
+         FROM menu_item_addons mia
+         JOIN addons a ON mia.addon_id = a.id
+         JOIN addon_categories ac ON a.category_id = ac.id
+         WHERE mia.menu_item_id = ? AND a.is_active = 1 AND ac.is_active = 1
+         ORDER BY ac.sort_order, a.sort_order",
+        [$menuItemId]
+    );
+}
+
+/**
+ * Get all add-ons grouped by menu item
+ */
+function getAllMenuItemAddons()
+{
+    $data = db()->fetchAll(
+        "SELECT mia.menu_item_id, a.*, ac.name as category_name, ac.icon as category_icon, mia.max_quantity
+         FROM menu_item_addons mia
+         JOIN addons a ON mia.addon_id = a.id
+         JOIN addon_categories ac ON a.category_id = ac.id
+         WHERE a.is_active = 1 AND ac.is_active = 1
+         ORDER BY mia.menu_item_id, ac.sort_order, a.sort_order"
+    );
+
+    $result = [];
+    foreach ($data as $row) {
+        $menuItemId = $row['menu_item_id'];
+        if (!isset($result[$menuItemId])) {
+            $result[$menuItemId] = [];
+        }
+        $result[$menuItemId][] = [
+            'id' => $row['id'],
+            'name' => $row['name'],
+            'price' => (float) $row['price'],
+            'unit' => $row['unit'],
+            'unit_value' => $row['unit_value'],
+            'category' => $row['category_name'],
+            'icon' => $row['category_icon'],
+            'max_qty' => (int) $row['max_quantity']
+        ];
+    }
+    return $result;
+}
