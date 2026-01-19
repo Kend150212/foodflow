@@ -358,7 +358,7 @@ $storeName = getSetting('store_name', 'FoodFlow');
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4">
                                                 <div class="flex items-center gap-3">
-                                                    <?php if ($item['image']): ?>
+                                                    <?php if (!empty($item['image'])): ?>
                                                         <img src="../<?= htmlspecialchars($item['image']) ?>" alt="" class="w-12 h-12 rounded-lg object-cover">
                                                     <?php else: ?>
                                                         <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -370,9 +370,9 @@ $storeName = getSetting('store_name', 'FoodFlow');
                                                     <div>
                                                         <div class="font-medium text-gray-900"><?= htmlspecialchars($item['name']) ?></div>
                                                         <div class="text-sm text-gray-500 flex gap-1">
-                                                            <?php if ($item['is_featured']): ?><span class="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs">Featured</span><?php endif; ?>
-                                                            <?php if ($item['is_spicy']): ?><span>🌶️</span><?php endif; ?>
-                                                            <?php if ($item['is_vegetarian']): ?><span>🌱</span><?php endif; ?>
+                                                            <?php if (!empty($item['is_featured'])): ?><span class="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs">Featured</span><?php endif; ?>
+                                                            <?php if (!empty($item['is_spicy'])): ?><span>🌶️</span><?php endif; ?>
+                                                            <?php if (!empty($item['is_vegetarian'])): ?><span>🌱</span><?php endif; ?>
                                                         </div>
                                                     </div>
                                                 </div>
