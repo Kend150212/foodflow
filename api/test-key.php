@@ -3,10 +3,24 @@
  * FoodFlow - Test API Keys
  */
 
+// Start output buffering to catch any PHP warnings
+ob_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
 session_start();
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../includes/functions.php';
+try {
+    require_once __DIR__ . '/../includes/functions.php';
+} catch (Exception $e) {
+    ob_end_clean();
+    echo json_encode(['error' => 'Server error']);
+    exit;
+}
+
+// Clear any buffered output from includes
+ob_end_clean();
 
 if (!isset($_SESSION['admin_id'])) {
     echo json_encode(['error' => 'Unauthorized']);
