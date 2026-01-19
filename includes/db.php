@@ -72,15 +72,36 @@ class Database
     public function update($table, $data, $where, $whereParams = [])
     {
         $set = [];
+        $params = [];
+        $i = 0;
         foreach ($data as $key => $value) {
-            $set[] = "{$key} = :{$key}";
+            $placeholder = "set_{$key}";
+            $set[] = "{$key} = :{$placeholder}";
+            $params[$placeholder] = $value;
         }
-        $sql = "UPDATE {$table} SET " . implode(', ', $set) . " WHERE {$where}";
-        return $this->query($sql, array_merge($data, $whereParams));
+
+        // Convert whereParams to use unique placeholders
+        $processedWhere = $where;
+        foreach ($whereParams as $key => $value) {
+            $placeholder = "where_{$key}";
+            $processedWhere = str_replace(":{$key}", ":{$placeholder}", $processedWhere);
+            $params[$placeholder] = $value;
+        }
+
+        $sql = "UPDATE {$table} SET " . implode(', ', $set) . " WHERE {$processedWhere}";
+        return $this->query($sql, $params);
     }
 
     public function delete($table, $where, $params = [])
     {
+        // Handle positional parameters (?)
+        if (isset($params[0])) {
+            $sql = "DELETE FROM {$table} WHERE {$where}";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt;
+        }
+
         $sql = "DELETE FROM {$table} WHERE {$where}";
         return $this->query($sql, $params);
     }
