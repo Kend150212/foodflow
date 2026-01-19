@@ -3,10 +3,23 @@
  * FoodFlow - AI Content Generation API
  */
 
-header('Content-Type: application/json');
-require_once __DIR__ . '/../includes/functions.php';
-
+// Start session first before any output
 session_start();
+
+// Set headers
+header('Content-Type: application/json');
+
+// Error handling
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
+try {
+    require_once __DIR__ . '/../includes/functions.php';
+} catch (Exception $e) {
+    echo json_encode(['error' => 'Failed to load dependencies: ' . $e->getMessage()]);
+    exit;
+}
+
 if (!isset($_SESSION['admin_id'])) {
     jsonResponse(['error' => 'Unauthorized'], 401);
 }
