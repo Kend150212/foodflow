@@ -72,7 +72,7 @@ try {
 
 function testGeminiKey($apiKey)
 {
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey);
 
     $data = [
         'contents' => [['parts' => [['text' => 'Say "API key is valid" in 5 words or less']]]],
@@ -84,17 +84,25 @@ function testGeminiKey($apiKey)
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
+
+    // Check for curl errors
+    if ($curlError) {
+        return ['success' => false, 'error' => 'Connection error: ' . $curlError];
+    }
 
     if ($httpCode === 200) {
         return ['success' => true, 'message' => 'Gemini API key is valid!'];
     } else {
         $error = json_decode($response, true);
-        return ['success' => false, 'error' => $error['error']['message'] ?? 'Invalid API key'];
+        $errorMsg = $error['error']['message'] ?? ($error['error']['status'] ?? 'Invalid API key or connection error');
+        return ['success' => false, 'error' => $errorMsg];
     }
 }
 
@@ -105,19 +113,28 @@ function testOpenAIKey($apiKey)
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $apiKey
+        'Authorization: Bearer ' . $apiKey,
+        'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
+
+    // Check for curl errors
+    if ($curlError) {
+        return ['success' => false, 'error' => 'Connection error: ' . $curlError];
+    }
 
     if ($httpCode === 200) {
         return ['success' => true, 'message' => 'OpenAI API key is valid!'];
     } else {
         $error = json_decode($response, true);
-        return ['success' => false, 'error' => $error['error']['message'] ?? 'Invalid API key'];
+        $errorMsg = $error['error']['message'] ?? 'Invalid API key or connection error';
+        return ['success' => false, 'error' => $errorMsg];
     }
 }
 
