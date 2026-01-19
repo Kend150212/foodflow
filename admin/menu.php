@@ -53,10 +53,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($editId) {
             db()->update('menu_items', $data, 'id = :id', ['id' => $editId]);
+            $itemId = $editId;
             $message = 'Menu item updated successfully!';
         } else {
-            db()->insert('menu_items', $data);
+            $itemId = db()->insert('menu_items', $data);
             $message = 'Menu item added successfully!';
+        }
+        
+        // Save schedule
+        $scheduleType = $_POST['schedule_type'] ?? 'always';
+        
+        // Delete existing schedules for this item
+        db()->delete('menu_schedules', 'menu_item_id = ?', [$itemId]);
+        
+        // Create new schedules if not "always"
+        if ($scheduleType !== 'always') {
+            $startTime = $_POST['start_time'] ?? '10:00';
+            $endTime = $_POST['end_time'] ?? '21:00';
+            
+            if ($scheduleType === 'specific_hours') {
+                // All days, same hours
+                db()->insert('menu_schedules', [
+                    'menu_item_id' => $itemId,
+                    'schedule_type' => $scheduleType,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'is_active' => 1
+                ]);
+            } elseif ($scheduleType === 'specific_days') {
+                // Specific days
+                $days = $_POST['schedule_days'] ?? [0,1,2,3,4,5,6];
+                foreach ($days as $day) {
+                    db()->insert('menu_schedules', [
+                        'menu_item_id' => $itemId,
+                        'schedule_type' => $scheduleType,
+                        'day_of_week' => (int)$day,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'is_active' => 1
+                    ]);
+                }
+            }
         }
         
         header('Location: menu.php?success=1');
@@ -85,8 +122,18 @@ $menuItems = db()->fetchAll(
 
 // Get item for editing
 $editItem = null;
+$itemSchedule = null;
 if ($editId) {
     $editItem = db()->fetch("SELECT * FROM menu_items WHERE id = ?", [$editId]);
+    // Get schedule if exists
+    $itemSchedule = db()->fetch(
+        "SELECT schedule_type, start_time, end_time, 
+                GROUP_CONCAT(day_of_week) as days 
+         FROM menu_schedules 
+         WHERE menu_item_id = ? AND is_active = 1 
+         GROUP BY menu_item_id",
+        [$editId]
+    );
 }
 
 $storeName = getSetting('store_name', 'FoodFlow');
@@ -255,6 +302,63 @@ $storeName = getSetting('store_name', 'FoodFlow');
                             </label>
                         </div>
                         
+                        <!-- Time Scheduling Section -->
+                        <div class="border-t pt-4 mt-4">
+                            <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                ⏰ Availability Schedule
+                                <span class="text-sm font-normal text-gray-500">(Optional)</span>
+                            </h3>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Type</label>
+                                <select name="schedule_type" id="scheduleType" onchange="toggleScheduleOptions()"
+                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                                    <option value="always" <?= ($itemSchedule['schedule_type'] ?? 'always') === 'always' ? 'selected' : '' ?>>Always Available</option>
+                                    <option value="specific_hours" <?= ($itemSchedule['schedule_type'] ?? '') === 'specific_hours' ? 'selected' : '' ?>>Specific Hours</option>
+                                    <option value="specific_days" <?= ($itemSchedule['schedule_type'] ?? '') === 'specific_days' ? 'selected' : '' ?>>Specific Days & Hours</option>
+                                </select>
+                            </div>
+                            
+                            <div id="timeOptions" class="<?= ($itemSchedule['schedule_type'] ?? 'always') === 'always' ? 'hidden' : '' ?>">
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                                        <input type="time" name="start_time" 
+                                               value="<?= $itemSchedule['start_time'] ?? '10:00' ?>"
+                                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                        <input type="time" name="end_time" 
+                                               value="<?= $itemSchedule['end_time'] ?? '21:00' ?>"
+                                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="dayOptions" class="<?= ($itemSchedule['schedule_type'] ?? 'always') !== 'specific_days' ? 'hidden' : '' ?>">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Available Days</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <?php 
+                                    $days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                    $selectedDays = explode(',', $itemSchedule['days'] ?? '0,1,2,3,4,5,6');
+                                    foreach ($days as $i => $day): 
+                                    ?>
+                                        <label class="flex items-center gap-1 cursor-pointer border px-3 py-2 rounded-lg hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-red-300">
+                                            <input type="checkbox" name="schedule_days[]" value="<?= $i ?>" 
+                                                   <?= in_array($i, $selectedDays) ? 'checked' : '' ?>
+                                                   class="w-4 h-4 text-red-600 rounded">
+                                            <span class="text-sm"><?= $day ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            
+                            <p class="text-xs text-gray-500 mt-3">
+                                💡 Use this to set items only available at certain times (e.g., Breakfast: 7am-11am, Lunch Special: 11am-2pm)
+                            </p>
+                        </div>
+                        
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" name="is_active" value="1" <?= ($editItem['is_active'] ?? 1) ? 'checked' : '' ?>
                                    class="w-4 h-4 text-red-600 rounded">
@@ -339,5 +443,16 @@ $storeName = getSetting('store_name', 'FoodFlow');
             <?php endif; ?>
         </div>
     </main>
+    
+    <script>
+        function toggleScheduleOptions() {
+            const type = document.getElementById('scheduleType').value;
+            const timeOptions = document.getElementById('timeOptions');
+            const dayOptions = document.getElementById('dayOptions');
+            
+            timeOptions.classList.toggle('hidden', type === 'always');
+            dayOptions.classList.toggle('hidden', type !== 'specific_days');
+        }
+    </script>
 </body>
 </html>
