@@ -7,7 +7,7 @@
 $currentPage = basename($_SERVER['PHP_SELF']);
 $storeName = getSetting('store_name', 'FoodFlow');
 
-$menuItems = [
+$sidebarNavItems = [
     ['url' => 'index.php', 'name' => 'Dashboard', 'icon' => 'home'],
     ['url' => 'orders.php', 'name' => 'Orders', 'icon' => 'clipboard'],
     ['url' => 'reports.php', 'name' => 'Reports', 'icon' => 'chart'],
@@ -42,11 +42,11 @@ $icons = [
     </div>
 
     <nav class="space-y-1">
-        <?php foreach ($menuItems as $item): ?>
-            <a href="<?= $item['url'] ?>"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg transition <?= $currentPage === $item['url'] ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' ?>">
-                <?= $icons[$item['icon']] ?>
-                <?= $item['name'] ?>
+        <?php foreach ($sidebarNavItems as $navItem): ?>
+            <a href="<?= $navItem['url'] ?>"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg transition <?= $currentPage === $navItem['url'] ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' ?>">
+                <?= $icons[$navItem['icon']] ?>
+                <?= $navItem['name'] ?>
             </a>
         <?php endforeach; ?>
     </nav>
@@ -87,11 +87,11 @@ $icons = [
 <!-- Mobile Menu -->
 <div id="mobileMenu" class="lg:hidden fixed inset-0 bg-gray-900/95 z-30 hidden pt-16">
     <nav class="p-4 space-y-2">
-        <?php foreach ($menuItems as $item): ?>
-            <a href="<?= $item['url'] ?>"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg <?= $currentPage === $item['url'] ? 'bg-gray-800 text-white' : 'text-gray-300' ?>">
-                <?= $icons[$item['icon']] ?>
-                <?= $item['name'] ?>
+        <?php foreach ($sidebarNavItems as $navItem): ?>
+            <a href="<?= $navItem['url'] ?>"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg <?= $currentPage === $navItem['url'] ? 'bg-gray-800 text-white' : 'text-gray-300' ?>">
+                <?= $icons[$navItem['icon']] ?>
+                <?= $navItem['name'] ?>
             </a>
         <?php endforeach; ?>
         <hr class="border-gray-700 my-4">
