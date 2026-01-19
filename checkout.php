@@ -534,6 +534,16 @@ $isOpen = isStoreOpen();
                                     </div>
                                 </label>
                             <?php endif; ?>
+
+                            <!-- Cash Payment - Always available for pickup -->
+                            <label class="payment-method">
+                                <input type="radio" name="payment_method" value="cash">
+                                <div class="payment-method-icon" style="color: #4CAF50;">💵</div>
+                                <div>
+                                    <div class="payment-method-name">Cash</div>
+                                    <div style="font-size: 0.75rem; color: #888;">Pay on pickup/delivery</div>
+                                </div>
+                            </label>
                         </div>
 
                         <!-- Card input for Stripe -->
