@@ -286,7 +286,7 @@ function validateCSRFToken($token)
 }
 
 /**
- * File upload handler
+ * Upload and optionally compress an image
  */
 function uploadImage($file, $folder = '')
 {
@@ -294,9 +294,7 @@ function uploadImage($file, $folder = '')
         return ['success' => false, 'error' => 'Upload failed'];
     }
 
-    if ($file['size'] > UPLOAD_MAX_SIZE) {
-        return ['success' => false, 'error' => 'File too large'];
-    }
+    $maxSize = 2 * 1024 * 1024; // 2MB
 
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mimeType = finfo_file($finfo, $file['tmp_name']);
@@ -306,23 +304,147 @@ function uploadImage($file, $folder = '')
         return ['success' => false, 'error' => 'Invalid file type'];
     }
 
-    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $filename = uniqid() . '_' . time() . '.' . $extension;
+    $uploadPath = UPLOAD_DIR . ($folder ? $folder . '/' : '');
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0755, true);
+    }
+
+    $filename = uniqid() . '_' . time() . '.jpg';
+    $destination = $uploadPath . $filename;
+
+    // If file is larger than 2MB, compress it
+    if ($file['size'] > $maxSize) {
+        $compressed = compressImage($file['tmp_name'], $destination, $mimeType, $maxSize);
+        if (!$compressed) {
+            return ['success' => false, 'error' => 'Failed to compress image'];
+        }
+    } else {
+        // Just move the file
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            return ['success' => false, 'error' => 'Failed to save file'];
+        }
+    }
+
+    $relativePath = 'assets/uploads/' . ($folder ? $folder . '/' : '') . $filename;
+    return ['success' => true, 'path' => $relativePath];
+}
+
+/**
+ * Compress image to target size
+ */
+function compressImage($source, $destination, $mimeType, $maxSize)
+{
+    $image = null;
+    switch ($mimeType) {
+        case 'image/jpeg':
+        case 'image/jpg':
+            $image = @imagecreatefromjpeg($source);
+            break;
+        case 'image/png':
+            $image = @imagecreatefrompng($source);
+            break;
+        case 'image/gif':
+            $image = @imagecreatefromgif($source);
+            break;
+        case 'image/webp':
+            $image = @imagecreatefromwebp($source);
+            break;
+    }
+
+    if (!$image) {
+        return false;
+    }
+
+    // Get original dimensions
+    $width = imagesx($image);
+    $height = imagesy($image);
+
+    // Resize if too large (max 1920px on longest side)
+    $maxDimension = 1920;
+    if ($width > $maxDimension || $height > $maxDimension) {
+        if ($width > $height) {
+            $newWidth = $maxDimension;
+            $newHeight = (int) ($height * ($maxDimension / $width));
+        } else {
+            $newHeight = $maxDimension;
+            $newWidth = (int) ($width * ($maxDimension / $height));
+        }
+        $resized = imagecreatetruecolor($newWidth, $newHeight);
+        imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        imagedestroy($image);
+        $image = $resized;
+    }
+
+    // Save with decreasing quality until under max size
+    $quality = 85;
+    do {
+        imagejpeg($image, $destination, $quality);
+        $quality -= 10;
+    } while (filesize($destination) > $maxSize && $quality > 20);
+
+    imagedestroy($image);
+    return true;
+}
+
+/**
+ * Upload image from URL
+ */
+function uploadImageFromUrl($url, $folder = '')
+{
+    $url = trim($url);
+    if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+        return ['success' => false, 'error' => 'Invalid URL'];
+    }
 
     $uploadPath = UPLOAD_DIR . ($folder ? $folder . '/' : '');
     if (!is_dir($uploadPath)) {
         mkdir($uploadPath, 0755, true);
     }
 
-    $destination = $uploadPath . $filename;
+    // Download image
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+    $imageData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    curl_close($ch);
 
-    if (move_uploaded_file($file['tmp_name'], $destination)) {
-        $relativePath = 'assets/uploads/' . ($folder ? $folder . '/' : '') . $filename;
-        return ['success' => true, 'path' => $relativePath];
+    if ($httpCode !== 200 || empty($imageData)) {
+        return ['success' => false, 'error' => 'Failed to download image'];
     }
 
-    return ['success' => false, 'error' => 'Failed to save file'];
+    // Check mime type
+    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    $mimeType = explode(';', $contentType)[0];
+    if (!in_array($mimeType, $allowedTypes)) {
+        return ['success' => false, 'error' => 'Invalid image type'];
+    }
+
+    $filename = uniqid() . '_' . time() . '.jpg';
+    $tempFile = sys_get_temp_dir() . '/' . $filename;
+    $destination = $uploadPath . $filename;
+
+    file_put_contents($tempFile, $imageData);
+
+    $maxSize = 2 * 1024 * 1024; // 2MB
+    if (filesize($tempFile) > $maxSize) {
+        $compressed = compressImage($tempFile, $destination, $mimeType, $maxSize);
+        unlink($tempFile);
+        if (!$compressed) {
+            return ['success' => false, 'error' => 'Failed to compress image'];
+        }
+    } else {
+        rename($tempFile, $destination);
+    }
+
+    $relativePath = 'assets/uploads/' . ($folder ? $folder . '/' : '') . $filename;
+    return ['success' => true, 'path' => $relativePath];
 }
+
 
 /**
  * Send notification email (basic)

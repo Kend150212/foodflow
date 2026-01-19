@@ -24,16 +24,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isVegetarian = isset($_POST['is_vegetarian']) ? 1 : 0;
     $isActive = isset($_POST['is_active']) ? 1 : 0;
     
-    // Handle image upload
-    $imagePath = $_POST['existing_image'] ?? '';
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $upload = uploadImage($_FILES['image'], 'menu');
-        if ($upload['success']) {
-            $imagePath = $upload['path'];
-        } else {
-            $error = $upload['error'];
+    // Handle image uploads (multiple files and URLs)
+    $imagePaths = [];
+    $existingImages = $_POST['existing_images'] ?? '';
+    if (!empty($existingImages)) {
+        $imagePaths = array_filter(explode(',', $existingImages));
+    }
+    
+    // Handle file uploads (multiple)
+    if (isset($_FILES['images']) && is_array($_FILES['images']['name'])) {
+        foreach ($_FILES['images']['name'] as $idx => $name) {
+            if ($_FILES['images']['error'][$idx] === UPLOAD_ERR_OK) {
+                $file = [
+                    'name' => $_FILES['images']['name'][$idx],
+                    'type' => $_FILES['images']['type'][$idx],
+                    'tmp_name' => $_FILES['images']['tmp_name'][$idx],
+                    'error' => $_FILES['images']['error'][$idx],
+                    'size' => $_FILES['images']['size'][$idx]
+                ];
+                $upload = uploadImage($file, 'menu');
+                if ($upload['success']) {
+                    $imagePaths[] = $upload['path'];
+                }
+            }
         }
     }
+    
+    // Handle URL uploads (one per line)
+    $imageUrls = trim($_POST['image_urls'] ?? '');
+    if (!empty($imageUrls)) {
+        $urls = array_filter(array_map('trim', explode("\n", $imageUrls)));
+        foreach ($urls as $url) {
+            if (!empty($url)) {
+                $upload = uploadImageFromUrl($url, 'menu');
+                if ($upload['success']) {
+                    $imagePaths[] = $upload['path'];
+                }
+            }
+        }
+    }
+    
+    // Use first image as primary, store all as comma-separated
+    $imagePath = !empty($imagePaths) ? $imagePaths[0] : '';
+    $allImages = implode(',', $imagePaths);
     
     if (empty($name) || $categoryId <= 0 || $price <= 0) {
         $error = 'Please fill in all required fields';
@@ -225,15 +258,30 @@ $storeName = getSetting('store_name', 'FoodFlow');
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Image</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Images (auto-compress > 2MB)</label>
                             <?php if (!empty($editItem['image'])): ?>
-                                <div class="mb-2">
-                                    <img src="../<?= htmlspecialchars($editItem['image']) ?>" alt="Current image" class="w-24 h-24 object-cover rounded-lg">
-                                    <input type="hidden" name="existing_image" value="<?= htmlspecialchars($editItem['image']) ?>">
+                                <div class="mb-3 flex flex-wrap gap-2" id="existingImages">
+                                    <?php 
+                                    $existingImgs = array_filter(explode(',', $editItem['image']));
+                                    foreach ($existingImgs as $idx => $img): 
+                                    ?>
+                                        <div class="relative group">
+                                            <img src="../<?= htmlspecialchars(trim($img)) ?>" alt="Image" class="w-20 h-20 object-cover rounded-lg border">
+                                            <button type="button" onclick="removeImage(this, '<?= htmlspecialchars(trim($img)) ?>')" 
+                                                class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition">×</button>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
+                                <input type="hidden" name="existing_images" id="existingImagesInput" value="<?= htmlspecialchars($editItem['image']) ?>">
                             <?php endif; ?>
-                            <input type="file" name="image" accept="image/*"
-                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                            
+                            <input type="file" name="images[]" accept="image/*" multiple
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 mb-2">
+                            <p class="text-xs text-gray-500 mb-3">Hold Ctrl/Cmd to select multiple files. Max 2MB each (auto-compressed).</p>
+                            
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Or paste image URLs (one per line)</label>
+                            <textarea name="image_urls" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
                         </div>
                         
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -409,6 +457,17 @@ $storeName = getSetting('store_name', 'FoodFlow');
             
             timeOptions.classList.toggle('hidden', type === 'always');
             dayOptions.classList.toggle('hidden', type !== 'specific_days');
+        }
+        
+        function removeImage(btn, imgPath) {
+            // Remove from hidden input
+            const input = document.getElementById('existingImagesInput');
+            if (input) {
+                let images = input.value.split(',').map(s => s.trim()).filter(s => s && s !== imgPath);
+                input.value = images.join(',');
+            }
+            // Remove preview element
+            btn.parentElement.remove();
         }
     </script>
 </body>
