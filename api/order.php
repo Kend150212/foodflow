@@ -3,9 +3,13 @@
  * FoodFlow - Order API
  */
 
+// Start output buffering to catch any errors
+ob_start();
+
 // Suppress all error output to prevent JSON corruption
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -14,10 +18,20 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 // Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    ob_end_clean();
     exit(0);
 }
 
-require_once __DIR__ . '/../includes/functions.php';
+try {
+    require_once __DIR__ . '/../includes/functions.php';
+} catch (Exception $e) {
+    ob_end_clean();
+    echo json_encode(['error' => 'Server configuration error']);
+    exit;
+}
+
+// Clear any buffered output from includes
+ob_end_clean();
 
 $method = $_SERVER['REQUEST_METHOD'];
 
