@@ -378,10 +378,10 @@ $storeName = getSetting('store_name', 'FoodFlow');
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 text-gray-600"><?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?></td>
-                                            <td class="px-6 py-4 font-medium">$<?= number_format($item['price'], 2) ?></td>
+                                            <td class="px-6 py-4 font-medium">$<?= number_format($item['price'] ?? 0, 2) ?></td>
                                             <td class="px-6 py-4">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $item['is_active'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' ?>">
-                                                    <?= $item['is_active'] ? 'Active' : 'Inactive' ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= !empty($item['is_active']) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' ?>">
+                                                    <?= !empty($item['is_active']) ? 'Active' : 'Inactive' ?>
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4">
