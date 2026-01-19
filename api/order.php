@@ -69,12 +69,19 @@ try {
                 jsonResponse(['error' => 'Cart is empty'], 400);
             }
 
-            // Validate required fields
-            $requiredFields = ['customer_name', 'customer_phone', 'order_type', 'payment_method'];
-            foreach ($requiredFields as $field) {
-                if (empty($input[$field])) {
-                    jsonResponse(['error' => "Missing required field: {$field}"], 400);
-                }
+            // Validate required fields - phone is optional for walk-in orders
+            if (empty($input['customer_name'])) {
+                jsonResponse(['error' => 'Customer name is required'], 400);
+            }
+            if (empty($input['payment_method'])) {
+                jsonResponse(['error' => 'Payment method is required'], 400);
+            }
+
+            // Normalize order_type - database only accepts 'delivery' or 'pickup'
+            $orderType = $input['order_type'] ?? 'pickup';
+            // Convert dine_in, takeout, etc. to 'pickup' for database
+            if (!in_array($orderType, ['delivery', 'pickup'])) {
+                $orderType = 'pickup'; // dine_in, takeout = pickup in database
             }
 
             // Calculate totals
@@ -84,7 +91,7 @@ try {
             }
 
             $taxRate = getSetting('tax_rate', 8.25);
-            $deliveryFee = $input['order_type'] === 'delivery' ? getSetting('delivery_fee', 4.99) : 0;
+            $deliveryFee = $orderType === 'delivery' ? getSetting('delivery_fee', 4.99) : 0;
             $freeDeliveryMin = getSetting('free_delivery_min', 35);
 
             if ($subtotal >= $freeDeliveryMin) {
@@ -104,7 +111,7 @@ try {
 
             // Create delivery address
             $deliveryAddress = '';
-            if ($input['order_type'] === 'delivery') {
+            if ($orderType === 'delivery') {
                 $deliveryAddress = implode(', ', array_filter([
                     $input['delivery_address'] ?? '',
                     $input['delivery_city'] ?? '',
@@ -124,8 +131,8 @@ try {
                 'order_number' => $orderNumber,
                 'customer_name' => sanitize($input['customer_name']),
                 'customer_email' => sanitize($input['customer_email'] ?? ''),
-                'customer_phone' => sanitize($input['customer_phone']),
-                'order_type' => $input['order_type'],
+                'customer_phone' => sanitize($input['customer_phone'] ?? ''),
+                'order_type' => $orderType,
                 'delivery_address' => $deliveryAddress,
                 'delivery_instructions' => sanitize($input['delivery_instructions'] ?? ''),
                 'subtotal' => $subtotal,
