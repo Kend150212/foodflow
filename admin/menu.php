@@ -386,8 +386,8 @@ $storeName = getSetting('store_name', 'FoodFlow');
                                             </td>
                                             <td class="px-6 py-4">
                                                 <div class="flex items-center gap-2">
-                                                    <a href="menu.php?id=<?= $item['id'] ?>" class="text-blue-600 hover:text-blue-800">Edit</a>
-                                                    <a href="menu.php?delete=<?= $item['id'] ?>" onclick="return confirm('Delete this item?')" class="text-red-600 hover:text-red-800">Delete</a>
+                                                    <a href="menu.php?id=<?= $item['id'] ?? 0 ?>" class="text-blue-600 hover:text-blue-800">Edit</a>
+                                                    <a href="menu.php?delete=<?= $item['id'] ?? 0 ?>" onclick="return confirm('Delete this item?')" class="text-red-600 hover:text-red-800">Delete</a>
                                                 </div>
                                             </td>
                                         </tr>
