@@ -191,10 +191,50 @@ function getAvailableMenuItems($categoryId = null, $featuredOnly = false)
 
     $items = db()->fetchAll($sql, $params);
 
-    // Filter by availability schedule
-    return array_filter($items, function ($item) {
-        return isMenuItemAvailable($item['id']);
-    });
+    // Add schedule info and availability to each item
+    foreach ($items as &$item) {
+        $item['is_available_now'] = isMenuItemAvailable($item['id']);
+        $item['schedule_info'] = getMenuItemScheduleInfo($item['id']);
+    }
+
+    return $items;
+}
+
+/**
+ * Get schedule info for a menu item
+ */
+function getMenuItemScheduleInfo($itemId)
+{
+    $schedule = db()->fetch(
+        "SELECT MAX(schedule_type) as schedule_type, 
+                TIME_FORMAT(MIN(start_time), '%h:%i %p') as start_time, 
+                TIME_FORMAT(MAX(end_time), '%h:%i %p') as end_time,
+                GROUP_CONCAT(DISTINCT day_of_week ORDER BY day_of_week) as days 
+         FROM menu_schedules 
+         WHERE menu_item_id = ? AND is_active = 1",
+        [$itemId]
+    );
+
+    if (empty($schedule['schedule_type']) || $schedule['schedule_type'] === 'always') {
+        return null; // Always available
+    }
+
+    $days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    $dayList = '';
+
+    if (!empty($schedule['days'])) {
+        $dayNums = explode(',', $schedule['days']);
+        $dayNames = array_map(function ($d) use ($days) {
+            return $days[(int) $d] ?? '';
+        }, $dayNums);
+        $dayList = implode(', ', array_filter($dayNames));
+    }
+
+    return [
+        'type' => $schedule['schedule_type'],
+        'time' => $schedule['start_time'] . ' - ' . $schedule['end_time'],
+        'days' => $dayList ?: 'Every day'
+    ];
 }
 
 /**
