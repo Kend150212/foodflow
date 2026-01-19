@@ -220,46 +220,54 @@ $storeName = getSetting('store_name', 'FoodFlow');
             </div>
 
             <!-- Quick Actions -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <a href="menu.php?action=add"
-                    class="bg-red-600 hover:bg-red-700 text-white rounded-xl p-6 flex items-center gap-4 transition">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <a href="pos.php"
+                    class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl p-6 flex items-center gap-4 transition shadow-lg">
                     <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
+                        <span class="text-2xl">💵</span>
                     </div>
                     <div>
-                        <div class="font-semibold">Add Menu Item</div>
-                        <div class="text-red-200 text-sm">Add new food to menu</div>
+                        <div class="font-semibold text-lg">POS</div>
+                        <div class="text-red-200 text-sm">Quick order taking</div>
+                    </div>
+                </a>
+
+                <a href="kitchen.php"
+                    class="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl p-6 flex items-center gap-4 transition shadow-lg">
+                    <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                        <span class="text-2xl">👨‍🍳</span>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-lg">Kitchen</div>
+                        <div class="text-orange-200 text-sm">Order display</div>
                     </div>
                 </a>
 
                 <a href="orders.php"
                     class="bg-white hover:bg-gray-50 border rounded-xl p-6 flex items-center gap-4 transition">
-                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                     </div>
                     <div>
                         <div class="font-semibold text-gray-900">View Orders</div>
-                        <div class="text-gray-500 text-sm">Manage incoming orders</div>
+                        <div class="text-gray-500 text-sm">Manage orders</div>
                     </div>
                 </a>
 
-                <a href="content.php"
+                <a href="menu.php?action=add"
                     class="bg-white hover:bg-gray-50 border rounded-xl p-6 flex items-center gap-4 transition">
-                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                     </div>
                     <div>
-                        <div class="font-semibold text-gray-900">Edit Landing Page</div>
-                        <div class="text-gray-500 text-sm">Update homepage content</div>
+                        <div class="font-semibold text-gray-900">Add Item</div>
+                        <div class="text-gray-500 text-sm">New menu item</div>
                     </div>
                 </a>
             </div>
@@ -345,6 +353,86 @@ $storeName = getSetting('store_name', 'FoodFlow');
         </script>
         <?php logout(); ?>
     <?php endif; ?>
+
+    <!-- Real-time notification -->
+    <div id="newOrderNotif"
+        class="fixed top-4 right-4 bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl z-50 hidden transform transition-all duration-300 translate-x-full">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🔔</span>
+            <div>
+                <div class="font-bold">New Order!</div>
+                <div class="text-sm" id="notifText"></div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="notifySound" preload="auto">
+        <source
+            src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp+YgG1lb3yLmZ+YiHdoaXiCipOUjYJ1bmhxfouWl4+FdWxqdHuIkpSNhHdyb3J6hI+TkYl7c29tc3yGjo+MhXlybHF3g42QjYR6dHBxdoKLj42Fenl0cnR7g4qMiYF5dXJzdnuEioyJgXl0cXR4foaKioN9eHRzdnqBho2LhH15dXN3fIOJjYqDfHh1c3Z9g4qNi4R9eHR0dn6EioyKg316dXN3fYOKjYqDfXl1c3d9g4qMioN9eXRzd32DioqKg315dXN3fYOKi4qDfXl1c3d9hIqLioN9eXV0d32EiouJg315dHN3fYOKi4mDfHl1c3h9hIqLiYN8eHVzeH2EiYqJg3x5dXN4fYSJiomDfHl1c3h9hImKiYN8eXVzeH2EiYqJg3x5dHN4fYSJiomDfHh1c3h9hImKiIN8eHV0eH2EiYqIg3x4dXR4fYSJioiDfHh1dHh9hImKiIN8eXV0eH2EiYqIg3x5dXR4fYSJioiDfHl1dHh9hImKiIN8eXV0eH2EiImHg3x5dXR5fYSIiYeDfHl1dHl9hIiJh4N8eXV0eX2EiImHg3x5dXR5fYSIiYeDfHl1dHl9hIiJh4N8eXV0eX2EiImHg3x5dXR5fYSIiYeDfHl1dHl9hIiJh4N8eXV0eX2EiImHg3x5dXR5fYSIiYeDfHl1dHl9hA=="
+            type="audio/wav">
+    </audio>
+
+    <script>
+        let lastOrderCount = <?= $pendingOrders['count'] ?>;
+
+        async function checkNewOrders() {
+            try {
+                const response = await fetch('../api/orders.php?action=stats');
+                const data = await response.json();
+
+                if (data.success) {
+                    const newPending = data.stats.pending + data.stats.confirmed + data.stats.preparing;
+
+                    if (newPending > lastOrderCount) {
+                        // New order arrived!
+                        showNotification(newPending - lastOrderCount);
+                    }
+
+                    lastOrderCount = newPending;
+
+                    // Update pending badge in sidebar
+                    const badge = document.querySelector('.sidebar-pending-badge');
+                    if (badge && newPending > 0) {
+                        badge.textContent = newPending;
+                        badge.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                console.log('Polling error:', err);
+            }
+        }
+
+        function showNotification(count) {
+            // Play sound
+            document.getElementById('notifySound').play().catch(() => { });
+
+            // Show in-page notification
+            const notif = document.getElementById('newOrderNotif');
+            document.getElementById('notifText').textContent = count + ' new order' + (count > 1 ? 's' : '') + '!';
+            notif.classList.remove('hidden', 'translate-x-full');
+
+            setTimeout(() => {
+                notif.classList.add('translate-x-full');
+                setTimeout(() => notif.classList.add('hidden'), 300);
+            }, 5000);
+
+            // Browser notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('New Order!', {
+                    body: count + ' new order' + (count > 1 ? 's' : '') + ' received',
+                    icon: '/favicon.ico'
+                });
+            }
+        }
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Poll every 10 seconds
+        setInterval(checkNewOrders, 10000);
+    </script>
 </body>
 
 </html>
