@@ -238,6 +238,10 @@ function getActionButtons($order)
                                 <span class="<?= $order['order_type'] === 'delivery' ? 'text-blue-400' : 'text-green-400' ?>">
                                     <?= $order['order_type'] === 'delivery' ? '🚗 Delivery' : '📦 Pickup' ?>
                                 </span>
+                                <?php if (!empty($order['scheduled_time'])): ?>
+                                    <span class="ml-2 text-purple-400">⏰
+                                        <?= date('g:i A', strtotime($order['scheduled_time'])) ?></span>
+                                <?php endif; ?>
                                 <?php if ($order['payment_method'] === 'cash'): ?>
                                     <span class="ml-2 text-yellow-400">💵 Cash - $<?= number_format($order['total'], 2) ?></span>
                                 <?php endif; ?>

@@ -9,13 +9,7 @@ require_once __DIR__ . '/../includes/functions.php';
 requireAuth();
 
 $categories = getCategories();
-$menuItems = db()->fetchAll(
-    "SELECT m.*, c.name as category_name 
-     FROM menu_items m 
-     LEFT JOIN categories c ON m.category_id = c.id 
-     WHERE m.is_active = 1 
-     ORDER BY c.sort_order, m.sort_order"
-);
+$menuItems = getAvailableMenuItems(); // This includes schedule info and availability status
 
 $storeName = getSetting('store_name', 'FoodFlow');
 $taxRate = getSetting('tax_rate', 8.25);
@@ -117,10 +111,10 @@ $taxRate = getSetting('tax_rate', 8.25);
             <div class="flex-1 overflow-y-auto p-4">
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" id="menuGrid">
                     <?php foreach ($menuItems as $item): ?>
-                        <button class="menu-item bg-gray-800 rounded-xl p-3 text-left hover:bg-gray-700 transition"
-                            data-id="<?= $item['id'] ?>" data-name="<?= htmlspecialchars($item['name']) ?>"
-                            data-price="<?= $item['price'] ?>" data-category="<?= $item['category_id'] ?>">
-                            <?php if ($item['image']): ?>
+                        <button class="menu-item bg-gray-800 rounded-xl p-3 text-left hover:bg-gray-700 transition relative"
+                            data-id="<?= $item['id'] ?? 0 ?>" data-name="<?= htmlspecialchars($item['name'] ?? '') ?>"
+                            data-price="<?= $item['price'] ?? 0 ?>" data-category="<?= $item['category_id'] ?? 0 ?>">
+                            <?php if (!empty($item['image'])): ?>
                                 <img src="../<?= htmlspecialchars($item['image']) ?>" alt=""
                                     class="w-full h-20 object-cover rounded-lg mb-2">
                             <?php else: ?>
@@ -128,11 +122,17 @@ $taxRate = getSetting('tax_rate', 8.25);
                                     <span class="text-2xl">🍽️</span>
                                 </div>
                             <?php endif; ?>
+                            <?php if (empty($item['is_available_now']) && !empty($item['schedule_info'])): ?>
+                                <span
+                                    class="absolute top-1 right-1 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded font-medium">
+                                    ⏰ <?= $item['schedule_info']['time'] ?? '' ?>
+                                </span>
+                            <?php endif; ?>
                             <div class="font-medium text-sm truncate">
-                                <?= htmlspecialchars($item['name']) ?>
+                                <?= htmlspecialchars($item['name'] ?? '') ?>
                             </div>
                             <div class="text-red-400 font-bold">$
-                                <?= number_format($item['price'], 2) ?>
+                                <?= number_format($item['price'] ?? 0, 2) ?>
                             </div>
                         </button>
                     <?php endforeach; ?>
@@ -437,24 +437,24 @@ $taxRate = getSetting('tax_rate', 8.25);
         document.getElementById('cashReceived').addEventListener('input', function () {
             calculateChange();
         });
-        
+
         function calculateChange() {
             const received = parseFloat(document.getElementById('cashReceived').value) || 0;
             const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * (1 + TAX_RATE / 100);
             const change = Math.max(0, received - total);
             document.getElementById('changeAmount').textContent = '$' + change.toFixed(2);
         }
-        
+
         function getOrderTotal() {
             return cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * (1 + TAX_RATE / 100);
         }
-        
+
         // Quick cash buttons
         document.querySelectorAll('.quick-cash').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 const amount = this.dataset.amount;
                 const input = document.getElementById('cashReceived');
-                
+
                 if (amount === 'exact') {
                     input.value = getOrderTotal().toFixed(2);
                 } else {
