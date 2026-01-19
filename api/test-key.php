@@ -16,9 +16,26 @@ if (!isset($_SESSION['admin_id'])) {
 $input = json_decode(file_get_contents('php://input'), true);
 $provider = $input['provider'] ?? '';
 $apiKey = $input['api_key'] ?? '';
+$useSaved = $input['use_saved'] ?? false;
 
-if (empty($provider) || empty($apiKey)) {
-    echo json_encode(['error' => 'Provider and API key required']);
+// If no key provided and use_saved is true, get from database
+if (empty($apiKey) && $useSaved) {
+    if ($provider === 'gemini') {
+        $apiKey = getSetting('gemini_api_key', '');
+    } elseif ($provider === 'openai') {
+        $apiKey = getSetting('openai_api_key', '');
+    } elseif ($provider === 'stripe') {
+        $apiKey = getSetting('stripe_secret_key', '');
+    }
+}
+
+if (empty($provider)) {
+    echo json_encode(['error' => 'Provider is required']);
+    exit;
+}
+
+if (empty($apiKey)) {
+    echo json_encode(['error' => 'No API key configured. Please enter a key first.']);
     exit;
 }
 

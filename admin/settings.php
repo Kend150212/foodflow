@@ -370,15 +370,14 @@ $tabs = [
                             <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-600 text-xs ml-2">Get API Key →</a>
                         </label>
                         <div class="flex gap-2">
-                            <input type="text" name="gemini_api_key" id="geminiKey"
-                                   placeholder="AIza..." 
-                                   value="<?= htmlspecialchars(getSetting('gemini_api_key', '')) ?>"
+                            <input type="password" name="gemini_api_key" id="geminiKey"
+                                   placeholder="<?= getSetting('gemini_api_key') ? '••••••••••••••••' : 'Enter API key' ?>" 
                                    class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
                             <button type="button" onclick="testApiKey('gemini')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                                 Test
                             </button>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Free tier: 60 requests/minute</p>
+                        <p class="text-xs text-gray-500 mt-1">Free tier: 60 requests/minute. Leave empty to keep existing key.</p>
                     </div>
                     
                     <div>
@@ -387,14 +386,14 @@ $tabs = [
                             <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-600 text-xs ml-2">Get API Key →</a>
                         </label>
                         <div class="flex gap-2">
-                            <input type="text" name="openai_api_key" id="openaiKey"
-                                   placeholder="sk-..." 
-                                   value="<?= htmlspecialchars(getSetting('openai_api_key', '')) ?>"
+                            <input type="password" name="openai_api_key" id="openaiKey"
+                                   placeholder="<?= getSetting('openai_api_key') ? '••••••••••••••••' : 'Enter API key' ?>" 
                                    class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500">
                             <button type="button" onclick="testApiKey('openai')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                                 Test
                             </button>
                         </div>
+                        <p class="text-xs text-gray-500 mt-1">Leave empty to keep existing key.</p>
                     </div>
                     
                     <div id="testResult" class="hidden rounded-lg p-4 mt-4"></div>
@@ -469,11 +468,6 @@ $tabs = [
             const keyInput = provider === 'gemini' ? document.getElementById('geminiKey') : document.getElementById('openaiKey');
             const apiKey = keyInput.value.trim();
             
-            if (!apiKey) {
-                showTestResult(false, 'Please enter an API key first');
-                return;
-            }
-            
             const resultDiv = document.getElementById('testResult');
             resultDiv.classList.remove('hidden', 'bg-green-50', 'bg-red-50', 'border-green-200', 'border-red-200');
             resultDiv.innerHTML = '<span class="text-gray-600">Testing...</span>';
@@ -483,7 +477,11 @@ $tabs = [
                 const response = await fetch('../api/test-key.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ provider, api_key: apiKey })
+                    body: JSON.stringify({ 
+                        provider, 
+                        api_key: apiKey || '',
+                        use_saved: !apiKey  // If no key entered, test saved key
+                    })
                 });
                 
                 const data = await response.json();
