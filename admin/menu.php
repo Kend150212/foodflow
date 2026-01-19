@@ -125,15 +125,20 @@ $editItem = null;
 $itemSchedule = null;
 if ($editId) {
     $editItem = db()->fetch("SELECT * FROM menu_items WHERE id = ?", [$editId]);
-    // Get schedule if exists
+    // Get schedule if exists - use aggregate functions to avoid GROUP BY error
     $itemSchedule = db()->fetch(
-        "SELECT schedule_type, start_time, end_time, 
+        "SELECT MAX(schedule_type) as schedule_type, 
+                MIN(start_time) as start_time, 
+                MAX(end_time) as end_time, 
                 GROUP_CONCAT(day_of_week) as days 
          FROM menu_schedules 
-         WHERE menu_item_id = ? AND is_active = 1 
-         GROUP BY menu_item_id",
+         WHERE menu_item_id = ? AND is_active = 1",
         [$editId]
     );
+    // If no schedule, set to null
+    if (empty($itemSchedule['schedule_type'])) {
+        $itemSchedule = null;
+    }
 }
 
 $storeName = getSetting('store_name', 'FoodFlow');
