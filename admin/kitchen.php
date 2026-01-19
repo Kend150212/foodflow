@@ -8,6 +8,20 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 requireAuth();
 
+// Handle status updates FIRST before any output
+if (isset($_GET['action']) && $_GET['action'] === 'status') {
+    $orderId = (int) $_GET['id'];
+    $status = $_GET['status'];
+    $validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
+
+    if ($orderId && in_array($status, $validStatuses)) {
+        db()->update('orders', ['order_status' => $status], 'id = :id', ['id' => $orderId]);
+    }
+
+    header('Location: kitchen.php?tab=' . ($_GET['tab'] ?? 'pending'));
+    exit;
+}
+
 $storeName = getSetting('store_name', 'FoodFlow');
 $activeTab = $_GET['tab'] ?? 'pending';
 
@@ -61,6 +75,41 @@ $counts = db()->fetch(
      WHERE DATE(created_at) >= CURDATE() - INTERVAL 1 DAY
      AND order_status NOT IN ('delivered', 'cancelled')"
 ) ?? ['pending' => 0, 'preparing' => 0, 'ready' => 0];
+
+function getStatusBg($status)
+{
+    switch ($status) {
+        case 'pending':
+            return 'bg-yellow-600';
+        case 'confirmed':
+            return 'bg-blue-600';
+        case 'preparing':
+            return 'bg-orange-600';
+        case 'ready':
+            return 'bg-green-600';
+        default:
+            return 'bg-gray-600';
+    }
+}
+
+function getActionButtons($order)
+{
+    $tab = $_GET['tab'] ?? 'pending';
+    switch ($order['order_status']) {
+        case 'pending':
+            return '<a href="?action=status&id=' . $order['id'] . '&status=confirmed&tab=' . $tab . '" class="py-3 bg-blue-600 hover:bg-blue-700 font-medium text-center">✓ Confirm</a>
+                    <a href="?action=status&id=' . $order['id'] . '&status=cancelled&tab=' . $tab . '" class="py-3 bg-gray-700 hover:bg-gray-600 font-medium text-center">✕ Cancel</a>';
+        case 'confirmed':
+            return '<a href="?action=status&id=' . $order['id'] . '&status=preparing&tab=' . $tab . '" class="py-3 bg-orange-600 hover:bg-orange-700 font-medium text-center col-span-2">🍳 Start Preparing</a>';
+        case 'preparing':
+            return '<a href="?action=status&id=' . $order['id'] . '&status=ready&tab=' . $tab . '" class="py-3 bg-green-600 hover:bg-green-700 font-medium text-center col-span-2">✓ Mark Ready</a>';
+        case 'ready':
+            return '<a href="print.php?id=' . $order['id'] . '" target="_blank" class="py-3 bg-gray-600 hover:bg-gray-700 font-medium text-center">🖨️ Print</a>
+                    <a href="?action=status&id=' . $order['id'] . '&status=delivered&tab=' . $tab . '" class="py-3 bg-green-600 hover:bg-green-700 font-medium text-center">✓ Complete</a>';
+        default:
+            return '';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -137,9 +186,7 @@ $counts = db()->fetch(
         </div>
         <div class="flex items-center gap-3">
             <span class="text-gray-400 text-sm" id="clock"></span>
-            <a href="pos.php" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-sm font-medium">
-                POS
-            </a>
+            <a href="pos.php" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-sm font-medium">POS</a>
         </div>
     </header>
 
@@ -160,14 +207,9 @@ $counts = db()->fetch(
     <main class="p-4">
         <?php if (empty($orders)): ?>
             <div class="text-center py-20">
-                <div class="text-6xl mb-4">
-                    <?= $activeTab === 'upcoming' ? '📅' : '🎉' ?>
-                </div>
+                <div class="text-6xl mb-4"><?= $activeTab === 'upcoming' ? '📅' : '🎉' ?></div>
                 <div class="text-xl text-gray-400">
                     <?= $activeTab === 'upcoming' ? 'No scheduled orders' : 'No orders in this queue!' ?>
-                </div>
-                <div class="text-gray-500 mt-2">
-                    <?= $activeTab === 'upcoming' ? 'Orders scheduled for future will appear here' : 'Waiting for new orders...' ?>
                 </div>
             </div>
         <?php else: ?>
@@ -185,13 +227,7 @@ $counts = db()->fetch(
                                     <div class="text-sm text-gray-400"><?= htmlspecialchars($order['customer_name']) ?></div>
                                 </div>
                                 <div class="text-right">
-                                    <?php if ($activeTab === 'upcoming' && $order['scheduled_time']): ?>
-                                        <div class="text-blue-400 font-medium">
-                                            <?= date('M j, g:i A', strtotime($order['scheduled_time'])) ?>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="<?= $timerClass ?> text-lg font-bold"><?= $elapsed ?>m</div>
-                                    <?php endif; ?>
+                                    <div class="<?= $timerClass ?> text-lg font-bold"><?= $elapsed ?>m</div>
                                     <div class="text-xs px-2 py-1 rounded <?= getStatusBg($order['order_status']) ?>">
                                         <?= strtoupper($order['order_status']) ?>
                                     </div>
@@ -203,7 +239,7 @@ $counts = db()->fetch(
                                     <?= $order['order_type'] === 'delivery' ? '🚗 Delivery' : '📦 Pickup' ?>
                                 </span>
                                 <?php if ($order['payment_method'] === 'cash'): ?>
-                                    <span class="ml-2 text-yellow-400">💵 Cash</span>
+                                    <span class="ml-2 text-yellow-400">💵 Cash - $<?= number_format($order['total'], 2) ?></span>
                                 <?php endif; ?>
                             </div>
 
@@ -232,13 +268,7 @@ $counts = db()->fetch(
         <?php endif; ?>
     </main>
 
-    <audio id="notifySound" preload="auto">
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqF"
-            type="audio/wav">
-    </audio>
-
     <script>
-        // Update clock
         function updateClock() {
             document.getElementById('clock').textContent = new Date().toLocaleTimeString();
         }
@@ -248,60 +278,3 @@ $counts = db()->fetch(
 </body>
 
 </html>
-<?php
-function getStatusBg($status)
-{
-    switch ($status) {
-        case 'pending':
-            return 'bg-yellow-600';
-        case 'confirmed':
-            return 'bg-blue-600';
-        case 'preparing':
-            return 'bg-orange-600';
-        case 'ready':
-            return 'bg-green-600';
-        default:
-            return 'bg-gray-600';
-    }
-}
-
-function getActionButtons($order)
-{
-    switch ($order['order_status']) {
-        case 'pending':
-            return '
-                <a href="?action=status&id=' . $order['id'] . '&status=confirmed&tab=' . $_GET['tab'] . '" class="py-3 bg-blue-600 hover:bg-blue-700 font-medium text-center">✓ Confirm</a>
-                <a href="?action=status&id=' . $order['id'] . '&status=cancelled&tab=' . $_GET['tab'] . '" class="py-3 bg-gray-700 hover:bg-gray-600 font-medium text-center">✕ Cancel</a>
-            ';
-        case 'confirmed':
-            return '
-                <a href="?action=status&id=' . $order['id'] . '&status=preparing&tab=' . $_GET['tab'] . '" class="py-3 bg-orange-600 hover:bg-orange-700 font-medium text-center col-span-2">🍳 Start Preparing</a>
-            ';
-        case 'preparing':
-            return '
-                <a href="?action=status&id=' . $order['id'] . '&status=ready&tab=' . $_GET['tab'] . '" class="py-3 bg-green-600 hover:bg-green-700 font-medium text-center col-span-2">✓ Mark Ready</a>
-            ';
-        case 'ready':
-            return '
-                <a href="print.php?id=' . $order['id'] . '" target="_blank" class="py-3 bg-gray-600 hover:bg-gray-700 font-medium text-center">🖨️ Print</a>
-                <a href="?action=status&id=' . $order['id'] . '&status=delivered&tab=' . $_GET['tab'] . '" class="py-3 bg-green-600 hover:bg-green-700 font-medium text-center">✓ Complete</a>
-            ';
-        default:
-            return '';
-    }
-}
-
-// Handle status updates
-if (isset($_GET['action']) && $_GET['action'] === 'status') {
-    $orderId = (int) $_GET['id'];
-    $status = $_GET['status'];
-    $validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
-
-    if ($orderId && in_array($status, $validStatuses)) {
-        db()->update('orders', ['order_status' => $status], 'id = :id', ['id' => $orderId]);
-    }
-
-    header('Location: kitchen.php?tab=' . ($_GET['tab'] ?? 'pending'));
-    exit;
-}
-?>

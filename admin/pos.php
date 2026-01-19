@@ -236,8 +236,26 @@ $taxRate = getSetting('tax_rate', 8.25);
                 <label class="block text-sm text-gray-400 mb-1">Cash Received</label>
                 <input type="number" id="cashReceived" step="0.01"
                     class="w-full px-4 py-3 bg-gray-700 rounded-lg text-2xl text-center font-bold">
-                <div class="mt-2 text-center">
-                    Change: <span id="changeAmount" class="text-green-400 font-bold">$0.00</span>
+
+                <!-- Quick Cash Buttons -->
+                <div class="grid grid-cols-6 gap-2 mt-3">
+                    <button type="button" class="quick-cash py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                        data-amount="5">$5</button>
+                    <button type="button" class="quick-cash py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                        data-amount="10">$10</button>
+                    <button type="button" class="quick-cash py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                        data-amount="20">$20</button>
+                    <button type="button" class="quick-cash py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                        data-amount="50">$50</button>
+                    <button type="button" class="quick-cash py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                        data-amount="100">$100</button>
+                    <button type="button"
+                        class="quick-cash py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium text-sm"
+                        data-amount="exact">Exact</button>
+                </div>
+
+                <div class="mt-3 text-center text-lg">
+                    Change: <span id="changeAmount" class="text-green-400 font-bold text-xl">$0.00</span>
                 </div>
             </div>
 
@@ -417,10 +435,33 @@ $taxRate = getSetting('tax_rate', 8.25);
 
         // Cash calculation
         document.getElementById('cashReceived').addEventListener('input', function () {
-            const received = parseFloat(this.value) || 0;
+            calculateChange();
+        });
+        
+        function calculateChange() {
+            const received = parseFloat(document.getElementById('cashReceived').value) || 0;
             const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * (1 + TAX_RATE / 100);
             const change = Math.max(0, received - total);
             document.getElementById('changeAmount').textContent = '$' + change.toFixed(2);
+        }
+        
+        function getOrderTotal() {
+            return cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * (1 + TAX_RATE / 100);
+        }
+        
+        // Quick cash buttons
+        document.querySelectorAll('.quick-cash').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const amount = this.dataset.amount;
+                const input = document.getElementById('cashReceived');
+                
+                if (amount === 'exact') {
+                    input.value = getOrderTotal().toFixed(2);
+                } else {
+                    input.value = parseFloat(amount);
+                }
+                calculateChange();
+            });
         });
 
         // Complete order
